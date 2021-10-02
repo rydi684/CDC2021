@@ -1,0 +1,179 @@
+---
+title: "CDC2021_Statistical_Analysis"
+author: "Feng Zhang"
+date: "9/30/2021"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+## Clean Data of New York 
+We decided to examine the clean data of New York's counties. In this set of commands, we are trying to figure out the % of insured and uninsured folks. 
+
+```{r}
+#To set the directory path for R to get the data
+setwd("C:/Users/tommy/Downloads")
+
+New_York_Clean <- read.csv("cleanedNY.csv")
+New_York_Clean_Percentage <- read.csv("cleanedNYpercentages.csv")
+
+head(New_York_Clean)
+head(New_York_Clean_Percentage)
+
+```
+
+#To see what are the values in NY data and data types
+```{r}
+str(New_York_Clean)
+str(New_York_Clean, list.len = 4)
+
+lapply(New_York_Clean, typeof)
+```
+
+
+# Summary Statistics of Uninsured people in New York
+```{r}
+New_York_uninsured = New_York_Clean %>% select (State, County, Uninsured.Population..Excluding.Undocumented.)
+
+head(New_York_uninsured)
+
+Uninsured_population <-as.numeric(gsub(",","", New_York_uninsured[,3] ))
+summary(Uninsured_population, title = "Uninsured population in the state of New York")
+
+```
+# Proportion of race and income 
+Comparing the race and income of the uninsured population of NY
+Then doing a simple linear regression to find if the two variables have a linear relationship 
+```{r}
+# Extract the columns for race & Income levels
+# convert characters to #s
+# Then do a simple regression or correlation to see if the the two have a relationship
+Race = New_York_Clean %>% select (State,County,Spanish.Hispanic.Latino.Origin, White.Non.Latino, Black.Non.Latino, Asian...Native.Hawaiian...Pac.Is, American.Indian...Alaska.Native, Multi.racial.or.Other)
+
+head(Race)
+
+State <- as.character(Race[,1])
+County <- as.character(Race[,2])
+
+Spanish_Origin <- as.numeric(gsub(",","", Race[,3]))
+Spanish_Origin[is.na(Spanish_Origin)] <- 0
+
+White_Non_Latino <- as.numeric(gsub(",","", Race[,4]))
+
+Black_Non_Latino <- as.numeric(gsub(",","", Race[,5]))
+Black_Non_Latino[is.na(Black_Non_Latino)] <- 0
+
+AAPI <- as.numeric(gsub(",","", Race[,6]))
+AAPI[is.na(AAPI)] <- 0
+
+Native_American_Alaska_Native <- as.numeric(gsub(",","", Race[,7]))
+Native_American_Alaska_Native[is.na(Native_American_Alaska_Native)] <- 0
+
+Multi_Racial_Other<- as.numeric(gsub(",","", Race[,8]))
+Multi_Racial_Other[is.na(Multi_Racial_Other)] <- 0
+#New Table of Race info
+Race_numbers = data.frame(Spanish_Origin, White_Non_Latino, Black_Non_Latino, AAPI, Native_American_Alaska_Native, Multi_Racial_Other)  
+head(Race_numbers)
+
+
+```
+
+```{r}
+Income = New_York_Clean %>% select(State,County,HIU.Income...100..FPL, HIU.Income.100.138..FPL, HIU.Income.139.249..FPL, HIU.Income.250.400..FPL, HIU.Income.400..FPL)
+
+head(Income)
+
+#HIU Income < 100% FPL
+Income_less_100 <- as.numeric(gsub(",", "", Income[,3]))
+Income_less_100[is.na(Income_less_100)] <- 0
+
+#HIU Income 100-138% FPL
+Income_138 <- as.numeric(gsub(",", "", Income[,4]))
+Income_138[is.na(Income_138)] <- 0
+
+#HIU Income 139-249% FPL
+Income_249 <- as.numeric(gsub(",", "", Income[,5]))
+Income_249[is.na(Income_249)] <- 0
+
+#HIU Income 250-400% FPL
+Income_400 <- as.numeric(gsub(",", "", Income[,6]))
+Income_400[is.na(Income_400)] <- 0
+
+#HIU Income 400% FPL
+Income_400_more <- as.numeric(gsub(",", "", Income[,7]))
+Income_400_more[is.na(Income_400_more)] <- 0
+
+
+Income_numbers = data.frame(Income_less_100 ,Income_138,Income_249, Income_400, Income_400_more)
+
+head(Income_numbers)
+
+
+```
+```{r}
+# Now For Correlation
+correlation <-cor(Race_numbers, Income_numbers)
+
+
+plot(correlation, xlab = "Racial Groups ", ylab = "Income Levels", main = "Racial groups vs. Income levels")
+
+```
+
+#Proportion of Education Level
+
+```{r}
+Education = New_York_Clean %>% select(State, County, Less.than.High.School, High.School.Diploma, College.Grad)
+
+head(Education)
+
+Less_High_School <-as.numeric(gsub(",", "", Education[,3]))
+Less_High_School [is.na(Less_High_School )] <- 0
+
+High_School <-as.numeric(gsub(",", "", Education[,4]))
+High_School[is.na(High_School)] <- 0
+
+College_Grad <-as.numeric(gsub(",", "", Education[,5]))
+College_Grad[is.na(College_Grad)] <- 0
+
+Education_Numbers = data.frame(Less_High_School, High_School, College_Grad)
+head(Education_Numbers)
+```
+# Correlation and Linear Regression
+Assumptions for the Linear Regression
+
+Linearity: The relationship between X and the mean of Y is linear.
+Homoscedasticity: The variance of residual is the same for any value of X.
+Independence: Observations are independent of each other.
+Normality: For any fixed value of X, Y is normally distributed.
+
+```{r}
+x1 <- Uninsured_population
+y1 <- Less_High_School
+
+lm1 <- lm(y1 ~ x1)
+
+plot(x1, y1, main = "Uninsured vs. less than high school education", xlab = "Uninsured Population", ylab = "Less Than High School Education")
+abline(a = -83.6019 , b = 0.2031 , col = "red")
+# Summary of the linear regression between uninsured individuals v. less than high school education
+summary(lm1)
+
+x2 <- Uninsured_population
+y2 <- High_School
+lm2 <- lm(y2 ~ x2)
+plot(x2, y2, main = "Uninsured vs. High School Diploma", xlab = "Uninsured Population", ylab = "High School Diploma")
+abline(a =  454.700 , b = 0.544 , col = "red")
+# Summary of the linear regression between uninsured individuals v. high school education
+summary(lm2)
+
+x3 <- Uninsured_population
+y3 <- College_Grad
+lm3 <- lm(y3 ~ x3)
+plot(x3, y3, main = "Uninsured vs. College Graduate", xlab = "Uninsured Population", ylab = "College Graduate")
+abline(a =   -388.4040  , b = 0.2531 , col = "red")
+#Summary of the linear regression between uninsured individuals v. College/ college graduate education
+summary(lm3)
+
+
+
+```
